@@ -239,6 +239,13 @@ export type Requirement = BaseEntity & {
    */
   researches: Research[];
 };
+export enum AgentEffort {
+  low = 'low',
+  medium = 'medium',
+  high = 'high',
+  xhigh = 'xhigh',
+  max = 'max',
+}
 
 /**
  * Adaptive per-task model tier selection
@@ -270,6 +277,10 @@ export type ModelConfiguration = {
    * Default model identifier for all agents
    */
   default: string;
+  /**
+   * Default reasoning effort for new feature runs (default: agent default)
+   */
+  effort?: AgentEffort;
   /**
    * Adaptive per-task model tier selection (default: disabled)
    */
@@ -1118,6 +1129,10 @@ export type SupervisorPolicy = BaseEntity & {
    * JSON array of structured policy rules
    */
   policyRulesJson?: string;
+  /**
+   * JSON array of deterministic GuardrailRules evaluated before the LLM evaluator
+   */
+  guardrailRulesJson?: string;
   /**
    * JSON object overriding the user's notification preferences for supervisor events
    */
@@ -5623,6 +5638,10 @@ export type AgentRun = BaseEntity & {
    * LLM model identifier used for this run (optional, set at creation)
    */
   modelId?: string;
+  /**
+   * Reasoning effort pinned for this run (optional, set at creation; absent = agent default)
+   */
+  effort?: AgentEffort;
 };
 
 /**
@@ -6308,6 +6327,72 @@ export type ContributorOnboardingAgentOutput = {
    */
   welcomeComment?: string;
 };
+export enum GuardrailGateType {
+  prd = 'prd',
+  plan = 'plan',
+  merge = 'merge',
+  all = 'all',
+}
+
+/**
+ * Deterministic criteria-based rule governing gate approvals and escalations
+ */
+export type GuardrailRule = {
+  /**
+   * Unique identifier for this rule
+   */
+  id: string;
+  /**
+   * Which gate this rule governs (prd, plan, merge, or all)
+   */
+  gate: GuardrailGateType;
+  /**
+   * Maximum lines of diff permitted for auto-approval
+   */
+  maxDiffLines?: number;
+  /**
+   * Maximum number of files changed permitted for auto-approval
+   */
+  maxFilesChanged?: number;
+  /**
+   * Glob patterns that trigger mandatory escalation if touched (e.g. auth/**, migrations/**)
+   */
+  blockedPathPatterns?: string[];
+  /**
+   * Whether CI pipeline must be passing for auto-approval
+   */
+  requireCiPass?: boolean;
+  /**
+   * Whether auto-approval is granted when all criteria pass (false = advise only)
+   */
+  autoApprove: boolean;
+};
+
+/**
+ * Result of evaluating deterministic guardrail rules against an approval gate
+ */
+export type GuardrailEvaluationResult = {
+  /**
+   * True if all criteria are satisfied
+   */
+  passed: boolean;
+  /**
+   * True if the gate should be auto-approved without human intervention
+   */
+  autoApproved: boolean;
+  /**
+   * Rule that decided the outcome, when a single rule is responsible
+   */
+  ruleId?: string;
+  /**
+   * List of violation reasons if any criteria failed
+   */
+  violations: string[];
+  /**
+   * Human-readable explanation of the evaluation
+   */
+  rationale: string;
+};
 
 /**
  * A selectable option within a PRD questionnaire question
@@ -6402,6 +6487,10 @@ export enum InteractiveSessionEventType {
   Stopped = 'interactive_session_stopped',
   Error = 'interactive_session_error',
 }
+export enum ApplicationStarter {
+  Blank = 'blank',
+  ViteShadcn = 'vite-shadcn',
+}
 export enum WhatsAppThreadTargetKind {
   Feature = 'feature',
   Application = 'application',
@@ -6444,12 +6533,7 @@ export enum AgentFeature {
   structuredOutput = 'structured-output',
   systemPrompt = 'system-prompt',
   sessionListing = 'session-listing',
-}
-export enum GuardrailGateType {
-  prd = 'prd',
-  plan = 'plan',
-  merge = 'merge',
-  all = 'all',
+  effort = 'effort',
 }
 export type DeployTarget = DeployTargetActionItem | DeployTargetTask | DeployTargetTasks;
 

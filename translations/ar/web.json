@@ -39,6 +39,9 @@
       "agentType": "نوع الوكيل",
       "agentAndModel": "الوكيل والنموذج",
       "agentAndModelDescription": "المزود والنموذج لجميع العمليات",
+      "effort": "مستوى الاستدلال",
+      "effortDescription": "مستوى الاستدلال لكل خطوة في الميزات الجديدة (Claude Code)",
+      "effortFailed": "فشل حفظ مستوى الجهد",
       "authMethod": "طريقة المصادقة",
       "apiToken": "رمز API",
       "apiTokenPlaceholder": "أدخل رمز API الخاص بك",
@@ -279,7 +282,7 @@
       "labelDescription": "The page you land on when opening the web UI",
       "options": {
         "control-center": "Control Center",
-        "applications": "Applications",
+        "applications": "التطبيقات",
         "features": "Features"
       },
       "hint": "This controls where you land when you open the web UI. You can change it at any time."
@@ -382,7 +385,7 @@
     "sessions": "الجلسات",
     "tools": "الأدوات",
     "skills": "المهارات",
-    "applications": "Applications",
+    "applications": "التطبيقات",
     "agentQuestions": "Agent Questions",
     "aspm": "Security",
     "aspmDashboard": "Dashboard",
@@ -449,7 +452,29 @@
     "git": "Git",
     "gitRequired": "مطلوب لجميع المراحل",
     "githubCli": "GitHub CLI",
-    "githubCliRequired": "مطلوب لطلبات السحب"
+    "githubCliRequired": "مطلوب لطلبات السحب",
+    "modes": {
+      "spec": {
+        "label": "قائم على المواصفات",
+        "description": "المتطلبات والبحث وخطة أولًا — توافق عليها قبل كتابة أي شيفرة.",
+        "stack": "أي تقنيات، تُختار أثناء البحث"
+      },
+      "fast": {
+        "label": "سريع",
+        "description": "ينفّذ مباشرةً من وصفك، دون مرحلة مواصفات.",
+        "stack": "أي تقنيات"
+      },
+      "application": {
+        "label": "نموذج أولي سريع",
+        "description": "نموذج أولي فوري لتطبيق ويب من قالب Vite + shadcn مع معاينة مباشرة. دون مرحلة مواصفات.",
+        "stack": "Vite + React + Tailwind + shadcn"
+      }
+    },
+    "existingFolder": {
+      "body": "يذكر وصفك {{path}}. يبدأ المشروع الجديد فارغًا ولن يطّلع على محتوى ذلك المجلد.",
+      "fallback": "لمتابعة شيفرة موجودة، افتح ذلك المجلد كمشروع بدلًا من ذلك.",
+      "action": "اعمل على هذا المجلد بدلًا من ذلك"
+    }
   },
   "welcome": {
     "loadingAgents": "جارٍ تحميل الوكلاء…",
@@ -567,10 +592,11 @@
     "folderOfRepos": "مجلد مستودعات",
     "adoptBranch": "تبني فرع",
     "fromGithub": "من GitHub",
-    "newApplication": "تطبيق جديد",
+    "newApplication": "ابدأ من وصف",
     "newSddFeature": "ميزة SDD جديدة",
     "newSddForApp": "ميزة SDD جديدة لـ {{appName}}",
-    "openInControlCenterSdd": "فتح في مركز التحكم (وضع SDD)"
+    "openInControlCenterSdd": "فتح في مركز التحكم (وضع SDD)",
+    "addFeature": "إضافة ميزة"
   },
   "chat": {
     "shepChat": "محادثة Shep",
@@ -654,7 +680,9 @@
     "skills": "SKILLS",
     "skillsDescription": "Curated skills to guide the agent during feature development.",
     "injectSkills": "Inject",
-    "injectSkillsDescription": "Include curated skills in the feature worktree."
+    "injectSkillsDescription": "Include curated skills in the feature worktree.",
+    "effort": "الجهد",
+    "effortFromSettings": "من الإعدادات"
   },
   "featureDrawer": {
     "copyFeatureId": "نسخ معرف الميزة",
@@ -690,7 +718,8 @@
     "pr": "PR",
     "watch": "مراقبة",
     "commitSpecs": "حفظ المواصفات",
-    "forkAndPr": "Fork و PR"
+    "forkAndPr": "Fork و PR",
+    "effortValue": "الجهد: {{level}}"
   },
   "activityTab": {
     "copyPromptToClipboard": "نسخ الأمر إلى الحافظة",
@@ -770,6 +799,16 @@
   },
   "modelPicker": {
     "searchPlaceholder": "البحث أو كتابة معرف النموذج…"
+  },
+  "effortSelect": {
+    "agentDefault": "الافتراضي للوكيل",
+    "levels": {
+      "low": "منخفض",
+      "medium": "متوسط",
+      "high": "مرتفع",
+      "xhigh": "مرتفع جدًا",
+      "max": "أقصى"
+    }
   },
   "skills": {
     "searchPlaceholder": "البحث عن مهارات..."

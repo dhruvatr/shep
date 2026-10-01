@@ -115,6 +115,7 @@ import { ImportWorkItemsCsvUseCase } from '../../../application/use-cases/import
 import { InitializeSettingsUseCase } from '../../../application/use-cases/settings/initialize-settings.use-case.js';
 import { LoadSettingsUseCase } from '../../../application/use-cases/settings/load-settings.use-case.js';
 import { UpdateSettingsUseCase } from '../../../application/use-cases/settings/update-settings.use-case.js';
+import { SetDefaultEffortUseCase } from '../../../application/use-cases/settings/set-default-effort.use-case.js';
 import { GetAdaptiveModelPlanUseCase } from '../../../application/use-cases/settings/get-adaptive-model-plan.use-case.js';
 import { CompleteOnboardingUseCase } from '../../../application/use-cases/settings/complete-onboarding.use-case.js';
 import { CompleteWebOnboardingUseCase } from '../../../application/use-cases/settings/complete-web-onboarding.use-case.js';
@@ -162,6 +163,7 @@ import { ListGitHubRepositoriesUseCase } from '../../../application/use-cases/re
 import { ListGitHubOrganizationsUseCase } from '../../../application/use-cases/repositories/list-github-organizations.use-case.js';
 import { ListOperationLogEntriesUseCase } from '../../../application/use-cases/operations/list-operation-log-entries.use-case.js';
 import { CreateFeatureFromRemoteUseCase } from '../../../application/use-cases/features/create/create-feature-from-remote.use-case.js';
+import { StartApplicationUseCase } from '../../../application/use-cases/applications/start-application.use-case.js';
 import { CheckAndUnblockFeaturesUseCase } from '../../../application/use-cases/features/check-and-unblock-features.use-case.js';
 import { SpawnFeatureAgentUseCase } from '../../../application/use-cases/features/spawn-feature-agent.use-case.js';
 import { FeatureCapacityService } from '../../../application/use-cases/features/capacity/feature-capacity.service.js';
@@ -273,8 +275,10 @@ import {
 import { ListFleetTriageItemsUseCase } from '../../../application/use-cases/fleet/list-fleet-triage-items.use-case.js';
 import { GetFleetOverviewUseCase } from '../../../application/use-cases/fleet/get-fleet-overview.use-case.js';
 import { BatchApproveFeaturesUseCase } from '../../../application/use-cases/fleet/batch-approve-features.use-case.js';
+import { EvaluateGateGuardrailsUseCase } from '../../../application/use-cases/fleet/evaluate-gate-guardrails.use-case.js';
 import { PruneRetainedDataUseCase } from '../../../application/use-cases/maintenance/prune-retained-data.use-case.js';
 import {
+  EvaluateGateGuardrailsUseCaseToken,
   ListFleetTriageItemsUseCaseToken,
   GetFleetOverviewUseCaseToken,
   BatchApproveFeaturesUseCaseToken,
@@ -294,6 +298,7 @@ export function registerUseCases(container: DependencyContainer): void {
   container.registerSingleton(InitializeSettingsUseCase);
   container.registerSingleton(LoadSettingsUseCase);
   container.registerSingleton(UpdateSettingsUseCase);
+  container.registerSingleton(SetDefaultEffortUseCase);
   container.registerSingleton(GetAdaptiveModelPlanUseCase);
   container.registerSingleton(CompleteOnboardingUseCase);
   container.registerSingleton(CompleteWebOnboardingUseCase);
@@ -343,6 +348,7 @@ export function registerUseCases(container: DependencyContainer): void {
   container.registerSingleton(ImportGitHubRepositoryUseCase);
   container.registerSingleton(InitRemoteRepositoryUseCase);
   container.registerSingleton(CreateFeatureFromRemoteUseCase);
+  container.registerSingleton(StartApplicationUseCase);
   container.registerSingleton(ListGitHubRepositoriesUseCase);
   container.registerSingleton(ListGitHubOrganizationsUseCase);
   container.registerSingleton(ListOperationLogEntriesUseCase);
@@ -540,6 +546,9 @@ export function registerUseCases(container: DependencyContainer): void {
   container.register('CreateFeatureFromRemoteUseCase', {
     useFactory: (c) => c.resolve(CreateFeatureFromRemoteUseCase),
   });
+  container.register('StartApplicationUseCase', {
+    useFactory: (c) => c.resolve(StartApplicationUseCase),
+  });
   container.register('ListGitHubRepositoriesUseCase', {
     useFactory: (c) => c.resolve(ListGitHubRepositoriesUseCase),
   });
@@ -572,6 +581,9 @@ export function registerUseCases(container: DependencyContainer): void {
   });
   container.register('UpdateSettingsUseCase', {
     useFactory: (c) => c.resolve(UpdateSettingsUseCase),
+  });
+  container.register('SetDefaultEffortUseCase', {
+    useFactory: (c) => c.resolve(SetDefaultEffortUseCase),
   });
   container.register('CompleteWebOnboardingUseCase', {
     useFactory: (c) => c.resolve(CompleteWebOnboardingUseCase),
@@ -1083,6 +1095,10 @@ export function registerUseCases(container: DependencyContainer): void {
   container.register('GlobalSearchUseCase', { useFactory: (c) => c.resolve(GlobalSearchUseCase) });
 
   // ─── Fleet Control Plane (spec 111) ───────────────────────────────────────
+  container.registerSingleton(EvaluateGateGuardrailsUseCase);
+  container.register(EvaluateGateGuardrailsUseCaseToken, {
+    useFactory: (c) => c.resolve(EvaluateGateGuardrailsUseCase),
+  });
   container.registerSingleton(ListFleetTriageItemsUseCase);
   container.register(ListFleetTriageItemsUseCaseToken, {
     useFactory: (c) => c.resolve(ListFleetTriageItemsUseCase),

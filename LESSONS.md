@@ -1,5 +1,74 @@
 # Lessons Learned
 
+## Fetch main before reporting what the code does or lacks
+
+Before an audit or status report says a model, flag or fix is missing, run
+`git fetch origin main` and check the finding against `origin/main`. A session
+checkout can be days behind, and a stale "X is missing" sends the reader after
+work that already shipped.
+
+## A gate piped into `tail` never fails
+
+`check.sh | tail -5 && git commit` commits even when `check.sh` fails, because
+the pipeline returns `tail`'s exit status. Redirect gate output to a file and
+test the command's own status (`check.sh > log; echo $?`), or set
+`set -o pipefail`, before chaining anything that depends on it.
+
+## An e2e test must assert the surroundings survive the interaction
+
+The effort picker's e2e test checked the dropdown options and the trigger text,
+and it passed while picking a value was closing the create drawer: Radix Select
+opens on pointerdown, so the trailing click targeted <body> and BaseDrawer read
+it as an outside click. After interacting with a control in a drawer, dialog or
+popover, assert that the container is still open and the URL is unchanged.
+
+## Write settings sub-objects by spreading, never by rebuilding
+
+`models: { default }` silently drops `models.adaptive` and `models.effort`.
+Update one field with `{ ...current.models, default }`. To clear an optional
+field, go through a use case that deletes it: `updateSettingsAction`'s deep
+merge skips `undefined`, so it can set a field but never clear one.
+
+## A fake child process must emit events in the order a real one does
+
+The ACP session ends its input stream on the process's `close`, so a turn that dies mid-way
+reports the exit code and stderr. Ending it on stdout `end` instead would lose them, because Node
+emits `end` before `close` and the connection would reject its requests with a generic "closed"
+first. A mutation that made exactly that change passed every unit test: the fake process emitted
+`close` and then ended stdout, the reverse of Node. `FakeChildProcess.exit()` in
+`tests/helpers/fake-acp-agent.ts` now follows the real order, and the mutation fails. The real
+binary then caught what no fake did. Cursor answered `session/new` with a JSON-RPC error, and the
+executor reported "Internal error" plus an "update your CLI" hint that only fits an agent that
+never answered.
+
+Rules:
+
+1. A test double for a process or stream must reproduce the event order of the real thing. When a
+   design choice depends on an ordering, mutate the code to the wrong order and watch a test fail.
+2. When a real binary is obtainable, drive the new executor against it, even logged out. The
+   failure paths it exercises (auth, missing binary, backend errors) are the ones users hit first.
+3. `cursor-agent acp`: never call `authenticate` (while logged out it tries to open a browser); it
+   does not exit on stdin EOF, so it must be killed; history arrives as `session/update` during
+   `session/load` and must not be shown as new output.
+
+## A reused string token silently hands every consumer the last registration
+
+`register-scheduled-workflows.ts` registered `'RunWorkflowUseCase'` for
+`RunScheduledWorkflowUseCase`, a name the interactive orchestrator already
+owned. tsyringe resolves the last registration, so `CreateApplicationUseCase`
+received the scheduled class and every prompt-created Application failed.
+Typecheck passed, and the registration test passed too, because it only checked
+`toBeDefined()`. Name a string token after the class it resolves to.
+`string-token-collision-guard.test.ts` now fails when one string token resolves
+to two classes.
+
+## Prefer a shared port when one provider gains a capability
+
+When a capability exists for one agent or integration (for example live model
+discovery), introduce a shared port and register each provider behind it
+instead of shipping a one-tool patch. Sibling providers then opt in the same
+way; presentation and docs stay provider-agnostic.
+
 ## Exercise real concurrency and retain subprocess errors
 
 `Promise.resolve(runner.run(...))` still runs each synchronous CLI command in
@@ -1285,18 +1354,19 @@ Tsyringe walks every `@inject(token)` decorator on a class and resolves the **en
 
 ## Dynamic Model Catalogs Must Not Be Validated Against Static Lists
 
-OpenRouter and Together AI expose dynamic model catalogs via REST APIs. Their model lists change frequently — new models added daily, old ones retired. The factory already has `listAvailableModels()` that fetches the live catalog with a 5-minute in-process cache and a static fallback for offline cases.
+Multiple agents expose live model catalogs (OpenRouter / Together AI via REST; Cursor via `cursor-agent --list-models`; Claude Code via `/model` aliases; Codex via `codex debug models`). Lists change frequently. `listAvailableModels(agentType, authConfig?)` fetches through the registered `IModelCatalog`, caches in-process for **1 hour** (`MODEL_CATALOG_TTL_MS`) with last-good fallback for the same auth cache key, and falls back to the static `AGENT_CATALOG` list when discovery is empty. Web boot also warms catalogs in parallel via `warmModelCatalogs`.
 
 **What went wrong (issue 098):** `UpdateFeaturePinnedConfigUseCase` validated the user's selected model against `factory.getSupportedModels(agentType)` — the **sync** method that returns the **static hardcoded** list (`OPENROUTER_MODELS`). The web ModelPicker showed the user the live dynamic catalog (`getAllAgentModels` → `listAvailableModels`), so the user could pick `nvidia/nemotron-3-super-120b-a12b:free` from the dropdown, but submitting threw `Unsupported model "..." for agent "openrouter"`. The picker and the validator were reading from two different sources of truth.
 
-**Rule:** For any provider that exposes a remote model catalog (OpenRouter, Together AI, future SDK-backed providers), validation MUST use the same `listAvailableModels()` path the picker uses. Never call `getSupportedModels()` (static) when the user picked from a list returned by `listAvailableModels()` (dynamic). The static list is a fallback for offline rendering, not a denylist.
+**Rule:** For any provider that exposes a remote/CLI model catalog, validation MUST use the same `listAvailableModels()` path the picker uses. Never call `getSupportedModels()` (static) when the user picked from a list returned by `listAvailableModels()` (dynamic). The static list is a fallback for offline rendering, not a denylist. Live Claude aliases must map to Shep canonical ids (or merge with hardcoded) so adaptive selection stays aligned.
 
 **Pattern to check when adding a new dynamic-catalog provider:**
 
-1. The catalog service goes in `infrastructure/services/agents/common/model-catalogs/` and exposes `listModels(apiKey?)`
-2. Wire it into `AgentExecutorFactory.listAvailableModels()` — return dynamic list if non-empty, otherwise the static fallback
+1. The catalog service goes in `infrastructure/services/agents/common/model-catalogs/`, extends `TtlModelCatalog`, and exposes `listModels(authConfig?)`
+2. Register it under `AgentType` in `createDefaultModelCatalogs()` — factory returns dynamic list if non-empty, otherwise the static fallback
 3. Audit every consumer of `getSupportedModels()` to confirm it's only used for offline UI hints, NEVER for validation
 4. The web action that powers the picker (`getAllAgentModels`) and the use case that validates the choice (e.g. `UpdateFeaturePinnedConfigUseCase`) must both go through `listAvailableModels` — same source of truth
+5. Keep `IAgentExecutorFactory` a process-wide singleton (`instanceCachingFactory`) so the TTL cache survives picker opens; otherwise every resolve re-spawns discovery
 
 ## Auto-Deploy Must Trigger on Agent-Finishes Transition, Not on `setupComplete` SSE Race
 
@@ -1416,13 +1486,33 @@ When building a web UI feature, shipping the presentational components and their
 4. Only THEN the isolated components + Storybook stories.
 
 **Sequencing:** build the page UI as a first-class deliverable of the same phase, not a "later". When planning a UI feature, the route + client + nav are line items, never assumed. Treat "build:storybook passes" as a quality gate, NOT as "the UI is done".
+## Discover model lists from the provider; hardcoded lists are only the offline floor
+
+Shep missed Claude Opus 5.5 even though the Claude catalog was "live": the
+`/model` probe returned the alias `opus`, and `CLAUDE_MODEL_ALIAS_TO_CANONICAL`
+mapped it back to the stale `claude-opus-5`. A live source routed through a
+hand-maintained mapping table is not live.
+
+**Rules:**
+- A provider's own list endpoint (Anthropic `GET /v1/models`, OpenRouter
+  `/api/v1/models`) comes first; CLI probes and hardcoded lists are ordered
+  fallbacks, merged so no known id disappears.
+- Anything keyed by model id (tiers, display names) needs a shape-based
+  fallback (`claude-<family>-<version>`), so a discovered id is usable without a
+  table edit. Tables stay as overrides.
+- Authenticate discovery with exactly the credentials the executor uses, so
+  the list describes the endpoint that will run the model. Never reuse a
+  subscription OAuth token issued to another client.
+- Discovery code takes injected `fetch` / `env` / CLI runners; unit tests must
+  pass stubs so a developer's real API key never makes a test hit the network.
+
 ## Adding a New Claude Model — Exact Touchpoints
 
 Model lists are centralized, but several adapters keep their own provider-format copies. Claude Code passes `options.model` straight to the `claude` CLI via `--model`, so no mapping is needed there — but Cursor and Copilot rewrite the canonical hyphenated ID into their own format. To add a model (e.g. `claude-opus-4-8`), touch ALL of:
 
 1. `packages/core/src/infrastructure/services/agents/common/agent-model-catalog.ts` — add to `CLAUDE_CODE_MODELS`, `CURSOR_MODELS`, and `COPILOT_CLI_MODELS` (note Copilot uses dotted form `claude-opus-4.8`, the others hyphenated). This is the source of truth for `AgentExecutorFactory.getSupportedModels()`.
 2. `src/presentation/web/lib/model-metadata.ts` — add a `displayName`/`description` entry (hyphenated key). Missing entries fall back to a prettified raw ID.
-3. `packages/core/src/infrastructure/services/agents/common/executors/cursor-executor.service.ts` — `CURSOR_MODEL_MAP` maps `claude-opus-4-8` → `opus-4.8`. Unmapped IDs pass through unchanged (a silent bug — the catalog can list a model the map doesn't translate).
+3. `packages/core/src/infrastructure/services/agents/common/executors/cursor-cli.ts` — `CURSOR_MODEL_MAP` (shared by the one-shot and interactive Cursor executors) maps `claude-opus-4-8` → `claude-opus-4-8-high`. Unmapped IDs pass through unchanged (a silent bug — the catalog can list a model the map doesn't translate).
 4. `packages/core/src/infrastructure/services/agents/common/executors/copilot-cli-executor.service.ts` — `LEGACY_MODEL_ALIASES` maps hyphenated → dotted for old settings payloads.
 5. `.storybook/mocks/app/actions/get-all-agent-models.ts` and `get-supported-models.ts` — Storybook bundles the client only, so these mocks must mirror the catalog or the picker stories drift.
 6. `tests/unit/infrastructure/services/agents/agent-executor-factory.test.ts` — `getSupportedModels` tests assert exact lists AND lengths per agent (Claude Code, Cursor, Copilot). Update the arrays and the `toHaveLength` count.
@@ -1769,7 +1859,7 @@ The Storybook mocks had drifted too (`get-supported-models.ts` /
 **When adding or retiring a model ID, touch all five:**
 
 1. `packages/core/src/infrastructure/services/agents/common/agent-model-catalog.ts` — every agent list that actually supports it (ordered most-capable first).
-2. Per-agent **name translation maps** — `CURSOR_MODEL_MAP` (cursor-executor) and `LEGACY_MODEL_ALIASES` (copilot-cli-executor). Each agent CLI has its own naming convention; a pass-through fallback hides the omission.
+2. Per-agent **name translation maps** — `CURSOR_MODEL_MAP` (`cursor-cli.ts`) and `LEGACY_MODEL_ALIASES` (copilot-cli-executor). Each agent CLI has its own naming convention; a pass-through fallback hides the omission.
 3. `src/presentation/web/lib/model-metadata.ts` — display name + description. Without it the picker shows a prettified raw ID and an empty description. Re-check the *neighbouring* descriptions too: a new flagship makes the old "Most capable" line a lie.
 4. `.storybook/mocks/app/actions/get-supported-models.ts` and `get-all-agent-models.ts` — static mocks that don't import the catalog, so they drift silently and stories render a stale list.
 5. `packages/core/src/domain/shared/model-tier.ts` — the `MODEL_TIERS` table (family + High/Medium/Low). A model missing from it is not an error: it simply opts out of adaptive routing, so a new flagship silently never becomes the High-tier target and a new small model is never selected for Low-complexity tasks. There is no test that can catch the omission, because "unknown model passes through unchanged" is the deliberate safe default.
@@ -2274,6 +2364,24 @@ check runs — the guard never gets a chance to skip that first stale write.
    referential equality, so returning the same reference silently skips a
    re-render that downstream effects may depend on.
 
+## A missing CI run URL is not proof of CI success
+
+When a repository has no GitHub Actions runs, `getCiStatus()` can still report
+pending or failed external PR checks. The CI watch loop must preserve that
+status; treating every URL-less result as success turns unresolved branch
+protection checks into a false green.
+
+**Rule:** Only the explicit no-workflow/no-checks case may complete without a
+CI verdict. Do not manufacture `Success`; record no status when no CI exists,
+and use `Indeterminate` when CI is configured but no run was observed. Pending
+or failed PR checks must remain non-success through the merge-node path.
+
+## CI evidence is tied to the PR merge base
+
+A PR check can be green or red for an old synthetic merge ref while upstream
+`main` has already advanced. Before making a release decision, compare the PR's
+`baseRefOid` with the live upstream default branch and inspect the check's
+`headSha`; stale results must be refreshed by rebasing and rerunning.
 ## A Next.js server action must resolve core use cases by token, not by import
 
 The fleet web action imported `GetFleetOverviewUseCase` as a value and passed the class to
@@ -2726,3 +2834,39 @@ rule, and both run in seconds. Rules: before pushing, grep `.github/workflows/*.
 diff, `node packages/electron/scripts/build.mjs`); a new third-party import in `packages/core`
 is also a `packages/electron/package.json` dependency; when adding a story, remove the
 component from `scripts/check-stories.mjs`'s grandfathered list in the same change.
+
+## An opinionated path must say so on every surface — and must not leak into the neutral one
+
+Issue 896: a user spent two days in the Applications "Describe with AI" flow believing it was
+Shep's spec-driven orchestrator; it always scaffolds Vite + React + shadcn with no spec phase.
+The copy said only "Start with an idea", the sidebar listed Applications first as Home, and the
+README never mentioned it. Worse, tracing it showed the "neutral" path was not neutral: the
+Control Center composer defaulted to Application mode, and its Fast/Spec modes prepended a
+hard-coded "Build this as a React application using Vite" preamble inside a server action.
+
+Rules:
+
+1. Every create surface names what it builds and on which stack. If an option is single-stack,
+   the stack is in the option itself, not in a doc the user has not read.
+2. Never rewrite the user's prompt to inject a technology choice on a path that promises "any
+   stack". Stack defaults belong only to the path that advertises them.
+3. A greenfield project defaults to the spec-driven workflow — an empty repo has no stack, so
+   skipping research is the wrong default.
+4. Orchestration of "create project + create feature" lives in a core use case
+   (`StartApplicationUseCase`), never in a server action, so the rules are testable and
+   shared by every surface.
+5. When a user's prompt names an existing folder, a "new project" flow must notice and offer to
+   work on that folder instead of silently creating an empty sandbox.
+6. Build on the user's mental model instead of teaching yours. "Everything is a feature" was
+   true internally, but people think "start an app, then add features". The first fix — label
+   two products ("Features" vs an "App Builder") honestly — made the split harder, not easier.
+   The right fix made the opinionated template one *starter* of an app, so the choice is visible
+   at creation and every feature has a home.
+
+## A hard-coded port in a test is a Windows failure waiting for a reboot
+
+`port.service.test.ts` bound 49153–49162 directly. Windows reserves slices of the dynamic range
+(49152+) per boot, so the same commit passed on one runner and failed on the next with
+`listen EACCES`; the test's `listen` promise had no error handler, so each failure became a 60s
+timeout. Rules: let the OS choose (`listen(0)`), bind consecutive ranges from an OS-chosen base
+with retries, and make every test `listen` reject on `error`.

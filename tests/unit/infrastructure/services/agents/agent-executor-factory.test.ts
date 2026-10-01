@@ -10,6 +10,8 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AgentExecutorFactory } from '@/infrastructure/services/agents/common/agent-executor-factory.service.js';
+import { ClaudeCodeInteractiveExecutor } from '@/infrastructure/services/agents/common/executors/claude-code-interactive-executor.service.js';
+import { CursorInteractiveExecutor } from '@/infrastructure/services/agents/common/executors/cursor-interactive-executor.service.js';
 import { DevAgentExecutorService } from '@/infrastructure/services/agents/common/executors/dev-executor.service.js';
 import { CodexCliExecutorService } from '@/infrastructure/services/agents/common/executors/codex-cli-executor.service.js';
 import { CopilotCliExecutorService } from '@/infrastructure/services/agents/common/executors/copilot-cli-executor.service.js';
@@ -20,6 +22,7 @@ import type { SpawnFunction } from '@/infrastructure/services/agents/common/type
 import { AgentType, AgentAuthMethod } from '@/domain/generated/output.js';
 import type { AgentConfig } from '@/domain/generated/output.js';
 import { AGENT_CATALOG, listSupportedAgentTypes } from '@/domain/shared/agent-catalog.js';
+import type { IModelCatalog } from '@/application/ports/output/agents/model-catalog.interface.js';
 
 describe('AgentExecutorFactory', () => {
   let factory: AgentExecutorFactory;
@@ -354,7 +357,9 @@ describe('AgentExecutorFactory', () => {
       const models = factory.getSupportedModels(AgentType.ClaudeCode);
 
       expect(models).toEqual([
+        'claude-fable-5-1',
         'claude-fable-5',
+        'claude-opus-5-5',
         'claude-opus-5',
         'claude-opus-4-8',
         'claude-opus-4-7',
@@ -380,23 +385,15 @@ describe('AgentExecutorFactory', () => {
       ]);
     });
 
-    it('should return cursor model list', () => {
+    it('should return cursor model list from AGENT_CATALOG', () => {
       const models = factory.getSupportedModels(AgentType.Cursor);
 
-      expect(models).toEqual([
-        'claude-opus-5',
-        'claude-opus-4-8',
-        'claude-opus-4-7',
-        'claude-opus-4-6',
-        'claude-sonnet-5',
-        'claude-sonnet-4-6',
-        'gpt-5.4-high',
-        'gpt-5.2',
-        'gpt-5.3-codex',
-        'gemini-3.1-pro-preview',
-        'composer-1.5',
-        'grok-code',
-      ]);
+      // DRY: assert against the catalog, not a duplicated literal list.
+      expect(models).toEqual([...AGENT_CATALOG[AgentType.Cursor].models]);
+      expect(models[0]).toBe('auto');
+      expect(models).toContain('composer-2.5');
+      expect(models).not.toContain('composer-1.5');
+      expect(models).not.toContain('claude-opus-4-6');
     });
 
     it('should return codex-cli model list with 12 models', () => {
@@ -505,6 +502,40 @@ describe('AgentExecutorFactory', () => {
     it('should return false for ollama', () => {
       expect(factory.supportsInteractive(AgentType.Ollama)).toBe(false);
     });
+
+    it('should return true for claude-code and cursor', () => {
+      expect(factory.supportsInteractive(AgentType.ClaudeCode)).toBe(true);
+      expect(factory.supportsInteractive(AgentType.Cursor)).toBe(true);
+    });
+
+    it('should agree with createInteractiveExecutor for every agent type', () => {
+      // One source of truth: an agent is interactive exactly when the factory
+      // can build it an interactive executor.
+      for (const agentType of Object.values(AgentType)) {
+        const build = () => factory.createInteractiveExecutor(agentType, defaultAuthConfig);
+        if (factory.supportsInteractive(agentType)) expect(build).not.toThrow();
+        else expect(build).toThrow('does not support interactive sessions');
+      }
+    });
+  });
+
+  describe('createInteractiveExecutor', () => {
+    it('should create a ClaudeCodeInteractiveExecutor for claude-code', () => {
+      const executor = factory.createInteractiveExecutor(AgentType.ClaudeCode, defaultAuthConfig);
+      expect(executor).toBeInstanceOf(ClaudeCodeInteractiveExecutor);
+    });
+
+    it('should create a CursorInteractiveExecutor for cursor', () => {
+      const executor = factory.createInteractiveExecutor(AgentType.Cursor, defaultAuthConfig);
+      expect(executor).toBeInstanceOf(CursorInteractiveExecutor);
+    });
+
+    it('should name the interactive agents when an agent has no interactive support', () => {
+      expect(() => factory.createInteractiveExecutor(AgentType.Dev, defaultAuthConfig)).toThrow(
+        "Agent type 'dev' does not support interactive sessions. " +
+          "Interactive sessions are available for: 'claude-code', 'cursor'."
+      );
+    });
   });
 });
 
@@ -564,7 +595,8 @@ describe('AgentExecutorFactory - resolveAdaptiveModelPlan', () => {
   });
 
   it('falls back to a tier the agent actually serves — Cursor lists no Haiku', () => {
-    const plan = factory.resolveAdaptiveModelPlan(AgentType.Cursor, 'claude-opus-5');
+    // Pin a live Cursor id so the resolved plan stays inside getSupportedModels().
+    const plan = factory.resolveAdaptiveModelPlan(AgentType.Cursor, 'claude-opus-5-high');
     expect(factory.getSupportedModels(AgentType.Cursor)).toContain(plan.low);
     expect(plan.low).not.toBe('claude-haiku-4-5');
   });
@@ -584,5 +616,150 @@ describe('AgentExecutorFactory - resolveAdaptiveModelPlan', () => {
       medium: 'my-local-model',
       low: 'my-local-model',
     });
+  });
+});
+
+describe('AgentExecutorFactory - listAvailableModels', () => {
+  it('prefers live Cursor listings when the catalog returns models', async () => {
+    const cursorCatalog: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([
+        { id: 'auto', displayName: 'Auto' },
+        { id: 'composer-2.5', displayName: 'Composer 2.5' },
+      ]),
+    };
+
+    const factory = new AgentExecutorFactory(vi.fn(), new Map([[AgentType.Cursor, cursorCatalog]]));
+
+    await expect(factory.listAvailableModels(AgentType.Cursor)).resolves.toEqual([
+      { id: 'auto', displayName: 'Auto' },
+      { id: 'composer-2.5', displayName: 'Composer 2.5' },
+    ]);
+    expect(cursorCatalog.listModels).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to hardcoded Cursor models when discovery returns empty', async () => {
+    const cursorCatalog: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([]),
+    };
+
+    const factory = new AgentExecutorFactory(vi.fn(), new Map([[AgentType.Cursor, cursorCatalog]]));
+
+    const listings = await factory.listAvailableModels(AgentType.Cursor);
+    expect(listings.map((l) => l.id)).toEqual(factory.getSupportedModels(AgentType.Cursor));
+    expect(listings.map((l) => l.id)).toContain('auto');
+    expect(listings.map((l) => l.id)).toContain('composer-2.5');
+  });
+
+  it('routes each agent type through its registered catalog', async () => {
+    const openRouter: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'or/model' }]),
+    };
+    const together: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'tg/model' }]),
+    };
+    const cursor: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'auto' }]),
+    };
+    const claude: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'claude-opus-5' }]),
+    };
+    const codex: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'gpt-5.4' }]),
+    };
+
+    const factory = new AgentExecutorFactory(
+      vi.fn(),
+      new Map([
+        [AgentType.OpenRouter, openRouter],
+        [AgentType.TogetherAi, together],
+        [AgentType.Cursor, cursor],
+        [AgentType.ClaudeCode, claude],
+        [AgentType.CodexCli, codex],
+      ])
+    );
+
+    await expect(factory.listAvailableModels(AgentType.OpenRouter)).resolves.toEqual([
+      { id: 'or/model' },
+    ]);
+    await expect(factory.listAvailableModels(AgentType.TogetherAi)).resolves.toEqual([
+      { id: 'tg/model' },
+    ]);
+    await expect(factory.listAvailableModels(AgentType.ClaudeCode)).resolves.toEqual([
+      { id: 'claude-opus-5' },
+    ]);
+    await expect(factory.listAvailableModels(AgentType.CodexCli)).resolves.toEqual([
+      { id: 'gpt-5.4' },
+    ]);
+    expect(cursor.listModels).not.toHaveBeenCalled();
+  });
+
+  it('warms every registered catalog concurrently', async () => {
+    let concurrent = 0;
+    let maxConcurrent = 0;
+    const makeCatalog = (): IModelCatalog => ({
+      listModels: vi.fn(async () => {
+        concurrent += 1;
+        maxConcurrent = Math.max(maxConcurrent, concurrent);
+        await new Promise((resolve) => setTimeout(resolve, 30));
+        concurrent -= 1;
+        return [{ id: 'm' }];
+      }),
+    });
+
+    const catalogs = new Map([
+      [AgentType.Cursor, makeCatalog()],
+      [AgentType.ClaudeCode, makeCatalog()],
+      [AgentType.CodexCli, makeCatalog()],
+    ]);
+    const factory = new AgentExecutorFactory(vi.fn(), catalogs);
+
+    await factory.warmModelCatalogs();
+
+    expect(maxConcurrent).toBe(3);
+    for (const catalog of catalogs.values()) {
+      expect(catalog.listModels).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('swallows rejecting catalogs during warm so one failure does not abort others', async () => {
+    const ok: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'ok' }]),
+    };
+    const bad: IModelCatalog = {
+      listModels: vi.fn().mockRejectedValue(new Error('boom')),
+    };
+    const factory = new AgentExecutorFactory(
+      vi.fn(),
+      new Map([
+        [AgentType.Cursor, ok],
+        [AgentType.ClaudeCode, bad],
+      ])
+    );
+
+    await expect(factory.warmModelCatalogs()).resolves.toBeUndefined();
+    expect(ok.listModels).toHaveBeenCalledTimes(1);
+    expect(bad.listModels).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes active-agent auth only to the matching catalog during warm', async () => {
+    const together: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'tg/model' }]),
+    };
+    const cursor: IModelCatalog = {
+      listModels: vi.fn().mockResolvedValue([{ id: 'auto' }]),
+    };
+    const factory = new AgentExecutorFactory(
+      vi.fn(),
+      new Map([
+        [AgentType.TogetherAi, together],
+        [AgentType.Cursor, cursor],
+      ])
+    );
+    const auth = { type: AgentType.TogetherAi, token: 'secret' } as AgentConfig;
+
+    await factory.warmModelCatalogs(auth);
+
+    expect(together.listModels).toHaveBeenCalledWith(auth);
+    expect(cursor.listModels).toHaveBeenCalledWith(undefined);
   });
 });

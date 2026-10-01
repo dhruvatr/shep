@@ -18,6 +18,7 @@ import type {
   AiSignalListFilter,
   IAiChangeRiskSignalRepository,
 } from '../../../ports/output/repositories/ai-change-risk-signal-repository.interface.js';
+import { integerOrFallback } from '../../../../domain/shared/cursor-number.js';
 
 export interface ListAiSignalsInput {
   applicationId?: string;
@@ -41,8 +42,11 @@ export class ListAiSignalsUseCase {
       agentSessionId: input.agentSessionId,
       states: input.states,
       signalTypes: input.signalTypes,
-      limit: input.limit,
-      offset: input.offset,
+      // An unusable page size / offset (`--limit abc`, `--limit 2.5`) falls
+      // back to undefined so the repository's own default applies — it stays
+      // the single source of truth for what that default is.
+      limit: integerOrFallback(input.limit, undefined),
+      offset: integerOrFallback(input.offset, undefined),
     };
     return this.signalRepo.list(filter);
   }

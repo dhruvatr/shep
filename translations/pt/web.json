@@ -39,6 +39,9 @@
       "agentType": "Tipo de Agente",
       "agentAndModel": "Agente e Modelo",
       "agentAndModelDescription": "Provedor e modelo para todas as operações",
+      "effort": "Esforço de raciocínio",
+      "effortDescription": "Raciocínio por turno em novas funcionalidades (Claude Code)",
+      "effortFailed": "Falha ao salvar o esforço",
       "authMethod": "Método de Autenticação",
       "apiToken": "Token de API",
       "apiTokenPlaceholder": "Insira seu token de API",
@@ -279,7 +282,7 @@
       "labelDescription": "The page you land on when opening the web UI",
       "options": {
         "control-center": "Control Center",
-        "applications": "Applications",
+        "applications": "Apps",
         "features": "Features"
       },
       "hint": "This controls where you land when you open the web UI. You can change it at any time."
@@ -382,7 +385,7 @@
     "sessions": "Sessões",
     "tools": "Ferramentas",
     "skills": "Skills",
-    "applications": "Applications",
+    "applications": "Apps",
     "agentQuestions": "Agent Questions",
     "aspm": "Security",
     "aspmDashboard": "Dashboard",
@@ -449,7 +452,29 @@
     "git": "Git",
     "gitRequired": "Necessário para todas as fases",
     "githubCli": "GitHub CLI",
-    "githubCliRequired": "Necessário para pull requests"
+    "githubCliRequired": "Necessário para pull requests",
+    "modes": {
+      "spec": {
+        "label": "Orientado a especificações",
+        "description": "Requisitos, pesquisa e um plano primeiro — você os aprova antes de qualquer código.",
+        "stack": "Qualquer stack, escolhida durante a pesquisa"
+      },
+      "fast": {
+        "label": "Rápido",
+        "description": "Implementa direto da sua descrição, sem fase de especificação.",
+        "stack": "Qualquer stack"
+      },
+      "application": {
+        "label": "Protótipo rápido",
+        "description": "Protótipo instantâneo de app web a partir do template Vite + shadcn, com pré-visualização ao vivo. Sem fase de especificação.",
+        "stack": "Vite + React + Tailwind + shadcn"
+      }
+    },
+    "existingFolder": {
+      "body": "Sua descrição menciona {{path}}. Um projeto novo começa vazio e não vai olhar dentro dessa pasta.",
+      "fallback": "Para continuar um código existente, abra essa pasta como projeto.",
+      "action": "Trabalhar nesta pasta"
+    }
   },
   "welcome": {
     "loadingAgents": "Carregando agentes…",
@@ -567,10 +592,11 @@
     "folderOfRepos": "Pasta de repositórios",
     "adoptBranch": "Adotar branch",
     "fromGithub": "Do GitHub",
-    "newApplication": "Nova Aplicação",
+    "newApplication": "Começar com uma descrição",
     "newSddFeature": "Nova funcionalidade SDD",
     "newSddForApp": "Nova funcionalidade SDD para {{appName}}",
-    "openInControlCenterSdd": "Abrir no Control Center (modo SDD)"
+    "openInControlCenterSdd": "Abrir no Control Center (modo SDD)",
+    "addFeature": "Adicionar funcionalidade"
   },
   "chat": {
     "shepChat": "Shep Chat",
@@ -654,7 +680,9 @@
     "skills": "SKILLS",
     "skillsDescription": "Curated skills to guide the agent during feature development.",
     "injectSkills": "Inject",
-    "injectSkillsDescription": "Include curated skills in the feature worktree."
+    "injectSkillsDescription": "Include curated skills in the feature worktree.",
+    "effort": "Esforço",
+    "effortFromSettings": "Das configurações"
   },
   "featureDrawer": {
     "copyFeatureId": "Copiar ID da funcionalidade",
@@ -690,7 +718,8 @@
     "pr": "PR",
     "watch": "Monitorar",
     "commitSpecs": "Commit de specs",
-    "forkAndPr": "Fork e PR"
+    "forkAndPr": "Fork e PR",
+    "effortValue": "Esforço {{level}}"
   },
   "activityTab": {
     "copyPromptToClipboard": "Copiar prompt para área de transferência",
@@ -770,6 +799,16 @@
   },
   "modelPicker": {
     "searchPlaceholder": "Buscar ou digitar um ID de modelo…"
+  },
+  "effortSelect": {
+    "agentDefault": "Padrão do agente",
+    "levels": {
+      "low": "Baixo",
+      "medium": "Médio",
+      "high": "Alto",
+      "xhigh": "Muito alto",
+      "max": "Máximo"
+    }
   },
   "skills": {
     "searchPlaceholder": "Buscar habilidades..."

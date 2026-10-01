@@ -39,6 +39,9 @@
       "agentType": "Agent Type",
       "agentAndModel": "Agent & Model",
       "agentAndModelDescription": "Provider and model for all operations",
+      "effort": "Reasoning effort",
+      "effortDescription": "Per-turn reasoning for new features (Claude Code)",
+      "effortFailed": "Failed to save effort",
       "authMethod": "Authentication Method",
       "apiToken": "API Token",
       "apiTokenPlaceholder": "Enter your API token",
@@ -279,7 +282,7 @@
       "labelDescription": "The page you land on when opening the web UI",
       "options": {
         "control-center": "Control Center",
-        "applications": "Applications",
+        "applications": "Apps",
         "features": "Features"
       },
       "hint": "This controls where you land when you open the web UI. You can change it at any time."
@@ -382,7 +385,7 @@
     "sessions": "Sessions",
     "tools": "Tools",
     "skills": "Skills",
-    "applications": "Applications",
+    "applications": "Apps",
     "agentQuestions": "Agent Questions",
     "aspm": "Security",
     "aspmDashboard": "Dashboard",
@@ -449,7 +452,29 @@
     "git": "Git",
     "gitRequired": "Required for all phases",
     "githubCli": "GitHub CLI",
-    "githubCliRequired": "Required for pull requests"
+    "githubCliRequired": "Required for pull requests",
+    "modes": {
+      "spec": {
+        "label": "Spec-driven",
+        "description": "Requirements, research and a plan first — you approve them before any code is written.",
+        "stack": "Any stack, chosen during research"
+      },
+      "fast": {
+        "label": "Fast",
+        "description": "Implements straight from your prompt, with no spec phase.",
+        "stack": "Any stack"
+      },
+      "application": {
+        "label": "Quick prototype",
+        "description": "Instant web-app prototype from the Vite + shadcn template, with a live preview. No spec phase.",
+        "stack": "Vite + React + Tailwind + shadcn"
+      }
+    },
+    "existingFolder": {
+      "body": "Your prompt mentions {{path}}. A new project starts empty and will not look inside that folder.",
+      "fallback": "To continue existing code, open that folder as a project instead.",
+      "action": "Work on this folder instead"
+    }
   },
   "welcome": {
     "loadingAgents": "Loading agents…",
@@ -567,10 +592,11 @@
     "folderOfRepos": "Folder of repos",
     "adoptBranch": "Adopt Branch",
     "fromGithub": "From GitHub",
-    "newApplication": "New Application",
+    "newApplication": "Start from a prompt",
     "newSddFeature": "New SDD feature",
     "newSddForApp": "New SDD feature for {{appName}}",
-    "openInControlCenterSdd": "Open in Control Center (SDD mode)"
+    "openInControlCenterSdd": "Open in Control Center (SDD mode)",
+    "addFeature": "Add feature"
   },
   "chat": {
     "shepChat": "Shep Chat",
@@ -654,7 +680,9 @@
     "plan": "Plan",
     "planDescription": "Auto-approve planning move to implementation.",
     "merge": "Merge",
-    "mergeDescription": "Auto-approve merge move to Done."
+    "mergeDescription": "Auto-approve merge move to Done.",
+    "effort": "Effort",
+    "effortFromSettings": "From settings"
   },
   "featureDrawer": {
     "copyFeatureId": "Copy feature ID",
@@ -690,7 +718,8 @@
     "pr": "PR",
     "watch": "Watch",
     "commitSpecs": "Commit Specs",
-    "forkAndPr": "Fork & PR"
+    "forkAndPr": "Fork & PR",
+    "effortValue": "{{level}} effort"
   },
   "activityTab": {
     "copyPromptToClipboard": "Copy prompt to clipboard",
@@ -770,6 +799,16 @@
   },
   "modelPicker": {
     "searchPlaceholder": "Search or type a model ID…"
+  },
+  "effortSelect": {
+    "agentDefault": "Agent default",
+    "levels": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "xhigh": "Extra high",
+      "max": "Max"
+    }
   },
   "skills": {
     "searchPlaceholder": "Search skills..."

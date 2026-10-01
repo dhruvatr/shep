@@ -41,42 +41,18 @@ import {
   validateSecurityConstraints,
   type ExecutorCapabilities,
 } from './security-constraint-validator.js';
-
-/** Agent name used in failure messages. */
-const AGENT_NAME = 'Cursor';
-
-/** Binary name on PATH (POSIX) and the command PowerShell invokes on Windows. */
-const CURSOR_BINARY = 'cursor-agent';
-
-/** Shown when the binary is missing, so the user knows how to fix it. */
-const CURSOR_NOT_FOUND_MESSAGE =
-  'Cursor agent CLI not found. Please install Cursor and ensure the "cursor" command is available on PATH.';
+import {
+  CURSOR_AGENT_NAME as AGENT_NAME,
+  CURSOR_BINARY,
+  CURSOR_NOT_FOUND_MESSAGE,
+  toCursorModelName,
+} from './cursor-cli.js';
 
 /**
  * stderr fragment Cursor prints when the requested model is unavailable.
  * Retrying cannot help, so the run is failed as soon as it appears.
  */
 const UNUSABLE_MODEL_MARKER = 'Cannot use this model';
-
-/**
- * Map canonical model IDs (used across shep) to Cursor CLI model names.
- * Cursor uses short names like "sonnet-4.6" instead of "claude-sonnet-4-6".
- * Models that already match Cursor's naming pass through unchanged.
- */
-const CURSOR_MODEL_MAP: Record<string, string> = {
-  'claude-opus-5': 'opus-5',
-  'claude-opus-4-8': 'opus-4.8',
-  'claude-opus-4-7': 'opus-4.7',
-  'claude-opus-4-6': 'opus-4.6',
-  'claude-sonnet-5': 'sonnet-5',
-  'claude-sonnet-4-6': 'sonnet-4.6',
-  'claude-haiku-4-5': 'haiku-4.5',
-  'grok-code': 'grok',
-};
-
-function toCursorModelName(model: string): string {
-  return CURSOR_MODEL_MAP[model] ?? model;
-}
 
 /** Features supported by Cursor CLI */
 const SUPPORTED_FEATURES = new Set<string>(['session-resume', 'streaming']);

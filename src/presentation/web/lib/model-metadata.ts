@@ -9,9 +9,14 @@ export interface ModelMeta {
  */
 const MODEL_METADATA: Record<string, ModelMeta> = {
   // Claude models
-  'claude-fable-5': { displayName: 'Fable 5', description: 'Most capable, long-horizon agentic' },
-  'claude-opus-5': { displayName: 'Opus 5', description: 'Most capable, complex agentic work' },
-  'claude-opus-4-8': { displayName: 'Opus 4.8', description: 'Previous Opus flagship' },
+  'claude-fable-5-1': {
+    displayName: 'Fable 5.1',
+    description: 'Most capable, long-horizon agentic',
+  },
+  'claude-fable-5': { displayName: 'Fable 5', description: 'Previous Fable flagship' },
+  'claude-opus-5-5': { displayName: 'Opus 5.5', description: 'Latest Opus, complex agentic work' },
+  'claude-opus-5': { displayName: 'Opus 5', description: 'Previous Opus flagship' },
+  'claude-opus-4-8': { displayName: 'Opus 4.8', description: 'Legacy Opus flagship' },
   'claude-opus-4-7': { displayName: 'Opus 4.7', description: 'Legacy Opus flagship' },
   'claude-opus-4-6': { displayName: 'Opus 4.6', description: 'Legacy flagship' },
   'claude-sonnet-5': { displayName: 'Sonnet 5', description: 'Near-Opus quality, fast' },
@@ -49,9 +54,26 @@ const MODEL_METADATA: Record<string, ModelMeta> = {
   },
   'gpt-5': { displayName: 'GPT-5', description: 'Legacy flagship' },
 
-  // Other
-  'composer-1.5': { displayName: 'Composer 1.5', description: 'Multi-file editing' },
-  'grok-code': { displayName: 'Grok Code', description: 'xAI code model' },
+  // Cursor CLI models (static fallback; live list comes from --list-models)
+  auto: { displayName: 'Auto', description: 'Cursor default model routing' },
+  'composer-2.5': { displayName: 'Composer 2.5', description: 'Cursor coding model' },
+  'composer-2.5-fast': {
+    displayName: 'Composer 2.5 Fast',
+    description: 'Faster Composer 2.5 variant',
+  },
+  // Legacy id kept for old settings rows that still store composer-1.5
+  'composer-1.5': { displayName: 'Composer 1.5', description: 'Legacy multi-file editing' },
+  'grok-code': { displayName: 'Grok Code', description: 'xAI code model (legacy id)' },
+  'cursor-grok-4.6-high': { displayName: 'Grok 4.6', description: 'xAI Grok via Cursor' },
+  'claude-opus-5-high': { displayName: 'Opus 5', description: 'Claude Opus 5 via Cursor' },
+  'claude-sonnet-5-high': { displayName: 'Sonnet 5', description: 'Claude Sonnet 5 via Cursor' },
+  'claude-4.6-sonnet-medium': {
+    displayName: 'Sonnet 4.6',
+    description: 'Claude Sonnet 4.6 via Cursor',
+  },
+  'gemini-3.1-pro': { displayName: 'Gemini 3.1 Pro', description: 'Advanced reasoning' },
+  // Legacy preview id still used by other agents' catalogs
+  // (keep single entry — displayName covers both shapes via getModelMeta fallback if needed)
 
   // Z.ai models
   'z-ai/glm-5.3': {
@@ -68,9 +90,27 @@ const MODEL_METADATA: Record<string, ModelMeta> = {
 
 const FALLBACK: ModelMeta = { displayName: '', description: '' };
 
+/**
+ * `claude-<family>-<major>[-<minor>][-<YYYYMMDD>]` — the shape of every current
+ * Anthropic model id. Matching it lets a model discovered at runtime render as
+ * "Opus 5.5" instead of the generic prettifier's "Opus 5 5".
+ */
+const CLAUDE_MODEL_ID = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/i;
+
+function formatClaudeModelId(modelId: string): string | undefined {
+  const match = CLAUDE_MODEL_ID.exec(modelId);
+  if (!match) return undefined;
+  const [, family, major, minor] = match;
+  const version = minor ? `${major}.${minor}` : major;
+  return `${family.charAt(0).toUpperCase()}${family.slice(1).toLowerCase()} ${version}`;
+}
+
 export function getModelMeta(modelId: string): ModelMeta {
   const meta = MODEL_METADATA[modelId];
   if (meta) return meta;
+
+  const claudeName = formatClaudeModelId(modelId);
+  if (claudeName) return { ...FALLBACK, displayName: claudeName };
 
   // Fallback: prettify the raw ID. Provider/model IDs like
   // 'anthropic/claude-sonnet-4.5' are split and we keep only the model portion,

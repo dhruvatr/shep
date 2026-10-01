@@ -157,6 +157,10 @@ describe('CursorExecutorService', () => {
       expect(executor.supportsFeature(AgentFeature.toolScoping)).toBe(false);
     });
 
+    it('should NOT support effort (the option is ignored)', () => {
+      expect(executor.supportsFeature(AgentFeature.effort)).toBe(false);
+    });
+
     it('should NOT support session-listing feature', () => {
       expect(executor.supportsFeature(AgentFeature.sessionListing)).toBe(false);
     });
@@ -374,15 +378,19 @@ describe('CursorExecutorService', () => {
 
       expect(mockSpawn).toHaveBeenCalledWith(
         'cursor-agent',
-        expect.arrayContaining(['--model', 'sonnet-4.6']),
+        expect.arrayContaining(['--model', 'claude-4.6-sonnet-medium']),
         expect.any(Object)
       );
     });
 
     it.each([
-      ['claude-opus-5', 'opus-5'],
-      ['claude-sonnet-5', 'sonnet-5'],
-    ])('should map %s to the cursor model name %s', async (canonical, cursorName) => {
+      ['auto', 'auto'],
+      ['composer-2.5', 'composer-2.5'],
+      ['composer-2.5-fast', 'composer-2.5-fast'],
+      ['composer-1.5', 'composer-2.5'],
+      ['claude-opus-5', 'claude-opus-5-high'],
+      ['claude-sonnet-5', 'claude-sonnet-5-high'],
+    ])('should map or pass through %s as --model %s', async (canonical, cursorName) => {
       const mockProc = createMockChildProcess();
       vi.mocked(mockSpawn).mockReturnValue(mockProc as any);
 
@@ -1032,7 +1040,7 @@ describe('CursorExecutorService', () => {
       await executePromise;
 
       const args = vi.mocked(mockSpawn).mock.calls[0][1] as string[];
-      expect(args).toContain('opus-5');
+      expect(args).toContain('claude-opus-5-high');
       expect(args.some((a) => a.includes("'"))).toBe(false);
     });
   });

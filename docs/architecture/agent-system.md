@@ -345,7 +345,10 @@ executor factory. There is no `aider-executor.service.ts`.
 Supporting files in the same directory:
 
 - `ai-sdk-base-executor.service.ts` -- shared base for the four SDK executors
-- `claude-code-interactive-executor.service.ts` -- interactive (chat) variant
+- `claude-code-interactive-executor.service.ts` -- Claude Code chat sessions (Agent SDK V2)
+- `cursor-interactive-executor.service.ts` -- Cursor chat sessions over `cursor-agent acp`
+- `acp/` -- agent-agnostic Agent Client Protocol chat session (see below)
+- `cursor-cli.ts` -- Cursor binary, install hint and model-id map shared by both Cursor executors
 - `mock-executor.service.ts` / `mock-executor-factory.service.ts` -- test doubles
 - `process-stream.ts` -- reusable `createLineAccumulator()` and `killProcessTree()`
 - `security-constraint-validator.ts` -- per-execution constraint checks
@@ -353,20 +356,69 @@ Supporting files in the same directory:
 `packages/core/src/domain/shared/agent-resume-descriptor.ts` (`RESUME_BINARIES`)
 records which CLI agents support session resume.
 
+### Interactive (chat) executors
+
+Every chat surface (Application, feature, repository and global chat) boots through
+`IAgentExecutorFactory.createInteractiveExecutor(agentType)`. The factory's
+`INTERACTIVE_EXECUTORS` table is the single source of truth: an agent is interactive exactly when
+it has an entry there, and `supportsInteractive()` reads the same table.
+
+| Agent         | Executor                                    | Transport                                          |
+| ------------- | ------------------------------------------- | -------------------------------------------------- |
+| `claude-code` | `claude-code-interactive-executor.service.ts` | Claude Agent SDK V2 session (persistent process) |
+| `cursor`      | `cursor-interactive-executor.service.ts`    | `cursor-agent acp` — Agent Client Protocol on stdio |
+
+Both keep **one agent process per chat session** and resume a conversation from the stored
+agent session id after a restart.
+
+The ACP path is generic (`executors/acp/`): `AcpInteractiveSession` speaks ACP through
+`@agentclientprotocol/sdk`, maps `session/update` notifications to `InteractiveAgentEvent`
+(`AcpUpdateTranslator`), resumes with `session/load` (history the agent replays during the load is
+never shown as new output) and approves tool permission requests once. An agent-specific
+`AcpAgentProfile` supplies the launch command, model-id mapping, login hint and extension methods —
+for Cursor, the `cursor/ask_question` request, which is routed to the same question UI as Claude's
+AskUserQuestion. Another agent that serves ACP (for example Gemini CLI) needs a profile, not a new
+executor.
+
+Cursor specifics worth knowing: the ACP server reads the stored login or `CURSOR_API_KEY` at start-up
+and is never sent `authenticate` (a logged-out server would try to open a browser); it does not exit
+when stdin closes, so `close()` kills it; on Windows it is launched through `cmd.exe /d /c` because
+`cursor-agent` is a `.cmd` shim.
+
 ## Agent Executor Interfaces
 
 The agent system uses these key interfaces (defined in `packages/core/src/application/ports/output/agents/`):
 
-| Interface                     | Purpose                                          |
-| ----------------------------- | ------------------------------------------------ |
-| `IAgentExecutor`              | Execute prompts against an AI coding agent       |
-| `IAgentExecutorFactory`       | Create executor instances for a given agent type |
-| `IAgentExecutorProvider`      | Resolve the current executor from settings       |
-| `IAgentRegistry`              | Register and discover agent definitions          |
-| `IAgentRunner`                | Run agent workflows with lifecycle management    |
-| `IAgentValidator`             | Validate agent tool availability                 |
-| `IFeatureAgentProcessService` | Manage feature agent background processes        |
-| `IStructuredAgentCaller`      | Make structured (typed) calls to agents          |
+| Interface                     | Purpose                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------- |
+| `IAgentExecutor`              | Execute prompts against an AI coding agent                              |
+| `IAgentExecutorFactory`       | Create executor instances for a given agent type                        |
+| `IAgentExecutorProvider`      | Resolve the current executor from settings                              |
+| `IModelCatalog`               | Live model discovery per provider (HTTP or CLI); TTL-cached             |
+| `IAgentRegistry`              | Register and discover agent definitions                                 |
+| `IAgentRunner`                | Run agent workflows with lifecycle management                           |
+| `IAgentValidator`             | Validate agent tool availability                                        |
+| `IFeatureAgentProcessService` | Manage feature agent background processes                               |
+| `IStructuredAgentCaller`      | Make structured (typed) calls to agents                                 |
+
+### Claude Code model discovery (spec 117)
+
+`ClaudeCodeModelCatalogService` asks three sources in order and uses the first
+that returns models:
+
+1. **Anthropic Models API** — `GET /v1/models` (`model-catalogs/anthropic-models-api.ts`),
+   authenticated with the same variables the `claude` CLI uses: `ANTHROPIC_API_KEY`
+   (`x-api-key`) or `ANTHROPIC_AUTH_TOKEN` (`Bearer`), against `ANTHROPIC_BASE_URL`
+   when set. Skipped when `CLAUDE_CODE_USE_BEDROCK` / `_VERTEX` / `_FOUNDRY` is on.
+   The Claude subscription OAuth token is never used.
+2. **`claude -p /model`** — alias list mapped through `CLAUDE_MODEL_ALIAS_TO_CANONICAL`.
+3. **Hardcoded** — `CLAUDE_CODE_MODELS` in `domain/shared/agent-catalog.ts`, served by
+   the executor factory when both sources are empty.
+
+Sources 1 and 2 are merged with the hardcoded list; dated snapshots
+(`claude-haiku-4-5-20251001`) collapse onto their undated catalog id. Models the
+API returns that no table lists still get an adaptive tier (from the family word,
+see below) and a readable name (`claude-opus-5-5` → "Opus 5.5").
 
 ## Workflow Stages
 
@@ -413,8 +465,10 @@ Tasks with no declared complexity are classified deterministically by
 on every run.
 
 Configure it from `shep settings adaptive-models` or Settings → Adaptive models.
-When adding a model to `agent-model-catalog.ts`, add a matching entry to
-`MODEL_TIERS` in `model-tier.ts` if tasks should be routable onto it.
+Claude ids are classified from their family word when `MODEL_TIERS` has no
+entry (fable/mythos/opus → High, sonnet → Medium, haiku → Low), so a Claude
+release discovered at runtime is routable immediately. Other families still need
+a `MODEL_TIERS` entry to be routable.
 
 ## Practical Example
 

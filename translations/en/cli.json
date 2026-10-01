@@ -44,6 +44,19 @@
         "cancelled": "Configuration cancelled.",
         "failed": "Failed to configure model"
       },
+      "effort": {
+        "description": "Configure the default reasoning effort for new feature runs",
+        "levelArgument": "Effort level (low, medium, high, xhigh, max)",
+        "clearOption": "Use the agent's own default effort",
+        "selectPrompt": "Select default reasoning effort",
+        "agentDefault": "Agent default",
+        "success": "Effort configured: {{effort}}",
+        "cleared": "Effort reset to the agent default",
+        "cancelled": "Configuration cancelled.",
+        "failed": "Failed to configure effort",
+        "invalid": "Unknown effort \"{{level}}\". Valid levels: {{levels}}",
+        "clearConflict": "A level cannot be combined with --clear"
+      },
       "workflow": {
         "description": "Configure default workflow behavior for new features",
         "allowPrdOption": "Auto-approve requirements phase",
@@ -216,9 +229,9 @@
       }
     },
     "feat": {
-      "description": "Manage features through the SDLC lifecycle",
+      "description": "Add features to an app or repository and move them through the SDLC",
       "new": {
-        "description": "Create a new feature",
+        "description": "Add a feature to the app or repository in the current folder",
         "descriptionArgument": "Feature description",
         "repoOption": "Repository path (defaults to current directory)",
         "pushOption": "Push branch to remote after implementation",
@@ -235,6 +248,8 @@
         "exploreOption": "Start an exploration/prototyping session for iterative design",
         "exploreAndFastConflict": "Cannot use --explore and --fast together. Choose one mode.",
         "modelOption": "LLM model identifier for this run (e.g. claude-opus-4-6)",
+        "effortOption": "Reasoning effort for this run: low, medium, high, xhigh or max (default: settings)",
+        "invalidEffort": "Unknown effort \"{{level}}\". Valid levels: {{levels}}",
         "noRebaseOption": "Skip syncing main from remote before creating the feature branch",
         "injectSkillsOption": "Inject curated skills into the worktree",
         "noInjectSkillsOption": "Skip skill injection for this invocation",
@@ -555,7 +570,7 @@
       }
     },
     "app": {
-      "description": "Manage applications",
+      "description": "Start apps and manage them — start an app, then add features",
       "ls": {
         "description": "List applications",
         "title": "Applications",
@@ -586,12 +601,12 @@
         "failedToShow": "Failed to show application"
       },
       "new": {
-        "description": "Create a new application",
-        "descriptionArgument": "Application description",
+        "description": "Start a new app on any stack (its first feature is spec-driven by default)",
+        "descriptionArgument": "What the app should do",
         "agentOption": "Agent type override",
         "modelOption": "LLM model override (e.g. claude-opus-4-6)",
-        "spinnerText": "Creating application",
-        "appCreated": "Application created",
+        "spinnerText": "Starting app",
+        "appCreated": "App started",
         "idLabel": "ID:",
         "nameLabel": "Name:",
         "slugLabel": "Slug:",
@@ -599,7 +614,14 @@
         "statusLabel": "Status:",
         "agentLabel": "Agent:",
         "modelLabel": "Model:",
-        "failedToCreate": "Failed to create application"
+        "failedToCreate": "Failed to create application",
+        "starterOption": "How the app gets its first code: blank (any stack, chosen by the first feature) or vite-shadcn (Vite + React + Tailwind + shadcn template, no spec phase)",
+        "fastOption": "Build the first feature straight from the prompt, without the spec phase",
+        "invalidStarter": "Unknown starter \"{{starter}}\". Use one of: {{starters}}",
+        "nextStepsTitle": "Next steps",
+        "firstFeatureStep": "Follow the first feature: shep feat show {{id}}",
+        "previewStep": "Watch it build in the web UI: shep ui",
+        "addFeatureStep": "Add a feature: cd {{path}} && shep feat new \"<what to add>\""
       },
       "del": {
         "description": "Delete an application",

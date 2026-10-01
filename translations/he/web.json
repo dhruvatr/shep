@@ -39,6 +39,9 @@
       "agentType": "סוג סוכן",
       "agentAndModel": "סוכן ומודל",
       "agentAndModelDescription": "ספק ומודל לכל הפעולות",
+      "effort": "רמת חשיבה",
+      "effortDescription": "רמת החשיבה בכל צעד בפיצ'רים חדשים (Claude Code)",
+      "effortFailed": "שמירת רמת המאמץ נכשלה",
       "authMethod": "שיטת אימות",
       "apiToken": "אסימון API",
       "apiTokenPlaceholder": "הזן את אסימון ה-API שלך",
@@ -279,7 +282,7 @@
       "labelDescription": "The page you land on when opening the web UI",
       "options": {
         "control-center": "Control Center",
-        "applications": "Applications",
+        "applications": "אפליקציות",
         "features": "Features"
       },
       "hint": "This controls where you land when you open the web UI. You can change it at any time."
@@ -382,7 +385,7 @@
     "sessions": "סשנים",
     "tools": "כלים",
     "skills": "כישורים",
-    "applications": "Applications",
+    "applications": "אפליקציות",
     "agentQuestions": "Agent Questions",
     "aspm": "Security",
     "aspmDashboard": "Dashboard",
@@ -449,7 +452,29 @@
     "git": "Git",
     "gitRequired": "נדרש לכל השלבים",
     "githubCli": "GitHub CLI",
-    "githubCliRequired": "נדרש לבקשות משיכה"
+    "githubCliRequired": "נדרש לבקשות משיכה",
+    "modes": {
+      "spec": {
+        "label": "מונחה מפרט",
+        "description": "דרישות, מחקר ותוכנית קודם — אתה מאשר אותם לפני שנכתב קוד.",
+        "stack": "כל סטאק, נבחר במהלך המחקר"
+      },
+      "fast": {
+        "label": "מהיר",
+        "description": "מממש ישירות מהתיאור שלך, ללא שלב מפרט.",
+        "stack": "כל סטאק"
+      },
+      "application": {
+        "label": "אב-טיפוס מהיר",
+        "description": "אב-טיפוס מיידי של אפליקציית ווב מתבנית Vite + shadcn עם תצוגה חיה. ללא שלב מפרט.",
+        "stack": "Vite + React + Tailwind + shadcn"
+      }
+    },
+    "existingFolder": {
+      "body": "התיאור שלך מזכיר את {{path}}. פרויקט חדש מתחיל ריק ולא יסתכל בתוך התיקייה הזו.",
+      "fallback": "כדי להמשיך קוד קיים, פתח את התיקייה הזו כפרויקט במקום.",
+      "action": "עבוד על התיקייה הזו במקום"
+    }
   },
   "welcome": {
     "loadingAgents": "טוען סוכנים…",
@@ -567,10 +592,11 @@
     "folderOfRepos": "תיקיית מאגרים",
     "adoptBranch": "אימוץ ענף",
     "fromGithub": "מ-GitHub",
-    "newApplication": "אפליקציה חדשה",
+    "newApplication": "התחל מתיאור",
     "newSddFeature": "פיצ'ר SDD חדש",
     "newSddForApp": "פיצ'ר SDD חדש עבור {{appName}}",
-    "openInControlCenterSdd": "פתיחה ב-Control Center (מצב SDD)"
+    "openInControlCenterSdd": "פתיחה ב-Control Center (מצב SDD)",
+    "addFeature": "הוסף פיצ׳ר"
   },
   "chat": {
     "shepChat": "צ'אט Shep",
@@ -654,7 +680,9 @@
     "skills": "SKILLS",
     "skillsDescription": "Curated skills to guide the agent during feature development.",
     "injectSkills": "Inject",
-    "injectSkillsDescription": "Include curated skills in the feature worktree."
+    "injectSkillsDescription": "Include curated skills in the feature worktree.",
+    "effort": "מאמץ",
+    "effortFromSettings": "לפי ההגדרות"
   },
   "featureDrawer": {
     "copyFeatureId": "העתקת מזהה פיצ'ר",
@@ -690,7 +718,8 @@
     "pr": "PR",
     "watch": "מעקב",
     "commitSpecs": "שמירת מפרטים",
-    "forkAndPr": "Fork ו-PR"
+    "forkAndPr": "Fork ו-PR",
+    "effortValue": "מאמץ: {{level}}"
   },
   "activityTab": {
     "copyPromptToClipboard": "העתקת פרומפט ללוח",
@@ -770,6 +799,16 @@
   },
   "modelPicker": {
     "searchPlaceholder": "חיפוש או הקלדת מזהה מודל…"
+  },
+  "effortSelect": {
+    "agentDefault": "ברירת המחדל של הסוכן",
+    "levels": {
+      "low": "נמוכה",
+      "medium": "בינונית",
+      "high": "גבוהה",
+      "xhigh": "גבוהה מאוד",
+      "max": "מקסימלית"
+    }
   },
   "skills": {
     "searchPlaceholder": "חיפוש כישורים..."

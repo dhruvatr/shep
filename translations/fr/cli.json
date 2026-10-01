@@ -44,6 +44,19 @@
         "cancelled": "Configuration annulée.",
         "failed": "Échec de la configuration du modèle"
       },
+      "effort": {
+        "description": "Configurer l'effort de raisonnement par défaut des nouvelles exécutions",
+        "levelArgument": "Niveau d'effort (low, medium, high, xhigh, max)",
+        "clearOption": "Utiliser l'effort par défaut de l'agent",
+        "selectPrompt": "Sélectionnez l'effort de raisonnement par défaut",
+        "agentDefault": "Défaut de l'agent",
+        "success": "Effort configuré : {{effort}}",
+        "cleared": "Effort réinitialisé au défaut de l'agent",
+        "cancelled": "Configuration annulée.",
+        "failed": "Échec de la configuration de l'effort",
+        "invalid": "Effort inconnu « {{level}} ». Niveaux valides : {{levels}}",
+        "clearConflict": "Un niveau ne peut pas être combiné avec --clear"
+      },
       "workflow": {
         "description": "Configurer le comportement par défaut du workflow pour les nouvelles fonctionnalités",
         "allowPrdOption": "Approuver automatiquement la phase d'exigences",
@@ -216,9 +229,9 @@
       }
     },
     "feat": {
-      "description": "Gérer les fonctionnalités tout au long du cycle de vie SDLC",
+      "description": "Ajouter des fonctionnalités à une app ou un dépôt et les faire avancer dans le SDLC",
       "new": {
-        "description": "Créer une nouvelle fonctionnalité",
+        "description": "Ajouter une fonctionnalité à l’app ou au dépôt du dossier courant",
         "descriptionArgument": "Description de la fonctionnalité",
         "repoOption": "Chemin du dépôt (par défaut le répertoire courant)",
         "pushOption": "Pousser la branche vers le distant après l'implémentation",
@@ -235,6 +248,8 @@
         "exploreOption": "Start an exploration/prototyping session for iterative design",
         "exploreAndFastConflict": "Cannot use --explore and --fast together. Choose one mode.",
         "modelOption": "Identifiant du modèle LLM pour cette exécution (par ex. claude-opus-4-6)",
+        "effortOption": "Effort de raisonnement pour cette exécution : low, medium, high, xhigh ou max (défaut : paramètres)",
+        "invalidEffort": "Effort inconnu « {{level}} ». Niveaux valides : {{levels}}",
         "noRebaseOption": "Skip syncing main from remote before creating the feature branch",
         "injectSkillsOption": "Inject curated skills into the worktree",
         "noInjectSkillsOption": "Skip skill injection for this invocation",
@@ -555,7 +570,7 @@
       }
     },
     "app": {
-      "description": "Manage applications",
+      "description": "Démarrer et gérer des apps — démarrez une app, puis ajoutez des fonctionnalités",
       "ls": {
         "description": "List applications",
         "title": "Applications",
@@ -586,12 +601,12 @@
         "failedToShow": "Failed to show application"
       },
       "new": {
-        "description": "Create a new application",
-        "descriptionArgument": "Application description",
+        "description": "Démarrer une nouvelle app sur n’importe quelle stack (sa première fonctionnalité est pilotée par les spécifications par défaut)",
+        "descriptionArgument": "Ce que l’app doit faire",
         "agentOption": "Agent type override",
         "modelOption": "LLM model override (e.g. claude-opus-4-6)",
-        "spinnerText": "Creating application",
-        "appCreated": "Application created",
+        "spinnerText": "Démarrage de l’app",
+        "appCreated": "App démarrée",
         "idLabel": "ID:",
         "nameLabel": "Name:",
         "slugLabel": "Slug:",
@@ -599,7 +614,14 @@
         "statusLabel": "Status:",
         "agentLabel": "Agent:",
         "modelLabel": "Model:",
-        "failedToCreate": "Failed to create application"
+        "failedToCreate": "Failed to create application",
+        "starterOption": "Comment l’app obtient son premier code : blank (n’importe quelle stack, choisie par la première fonctionnalité) ou vite-shadcn (modèle Vite + React + Tailwind + shadcn, sans phase de spécification)",
+        "fastOption": "Construire la première fonctionnalité directement depuis la description, sans phase de spécification",
+        "invalidStarter": "Modèle de départ inconnu « {{starter}} ». Utilisez l’un de : {{starters}}",
+        "nextStepsTitle": "Étapes suivantes",
+        "firstFeatureStep": "Suivre la première fonctionnalité : shep feat show {{id}}",
+        "previewStep": "Suivre la construction dans l’interface web : shep ui",
+        "addFeatureStep": "Ajouter une fonctionnalité : cd {{path}} && shep feat new \"<ce qu’il faut ajouter>\""
       },
       "del": {
         "description": "Delete an application",
